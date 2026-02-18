@@ -1,22 +1,48 @@
-﻿namespace lab1;
+﻿using System.Text;
 
-public class JordanGaussSolver(Fraction[,] matrix)
+namespace lab1;
+
+public class JordanGaussSolver
 {
-    private readonly int rows = matrix.GetLength(0);
-    private readonly int cols = matrix.GetLength(1);
+    private readonly Fraction[,] _matrix;
+    private readonly Fraction[,] _originalMatrix;
+    private readonly int _rows;
+    private readonly int _cols;
+    private readonly bool _silentMode;
+    
+    public JordanGaussSolver(Fraction[,] matrix, bool silentMode = false)
+    {
+        _rows = matrix.GetLength(0);
+        _cols = matrix.GetLength(1);
+        _silentMode = silentMode;
+        
+        _matrix = new Fraction[_rows, _cols];
+        _originalMatrix = new Fraction[_rows, _cols];
+        for (var i = 0; i < _rows; i++)
+        {
+            for (var j = 0; j < _cols; j++)
+            {
+                _matrix[i, j] = matrix[i, j];
+                _originalMatrix[i, j] = matrix[i, j];
+            }
+        }
+    }
 
     public void Solve()
     {
         var pivotRow = 0;
-        var variableCount = cols - 1;
+        var variableCount = _cols - 1;
 
-        Console.WriteLine($"\n--- Исходная матрица ---");
-        PrintMatrix();
+        if (!_silentMode)
+        {
+            Console.WriteLine($"\n--- Исходная матрица ---");
+            PrintMatrix();
+        }
 
-        for (var col = 0; col < variableCount && pivotRow < rows; col++)
+        for (var col = 0; col < variableCount && pivotRow < _rows; col++)
         {
             var maxRow = FindMaxRowInColumn(col, pivotRow);
-            var maxVal = matrix[maxRow, col].Abs;
+            var maxVal = _matrix[maxRow, col].Abs;
 
             if (maxVal.IsZero)
                 continue;
@@ -24,115 +50,81 @@ public class JordanGaussSolver(Fraction[,] matrix)
             if (maxRow != pivotRow)
             {
                 SwapRows(pivotRow, maxRow);
-                Console.WriteLine($"\n--- Перестановка строк {pivotRow + 1} и {maxRow + 1} ---");
+                if (!_silentMode)
+                {
+                    Console.WriteLine($"\n--- Перестановка строк {pivotRow + 1} и {maxRow + 1} ---");
+                    PrintMatrix();
+                }
+            }
+
+            var pivotElement = _matrix[pivotRow, col];
+            DividePivotRow(pivotRow, pivotElement);
+            
+            if (!_silentMode)
+            {
+                Console.WriteLine($"\n--- Делим строку на главный элемент ---");
                 PrintMatrix();
             }
 
-            var pivotElement = matrix[pivotRow, col];
-            DividePivotRow(pivotRow, pivotElement);
-            Console.WriteLine($"\n--- Делим строку на главный элемент ---");
-            PrintMatrix();
-
             CalculateColumn(col, pivotRow);
 
-            Console.WriteLine($"\n--- Результат после обработки x{col + 1} ---");
-            PrintMatrix();
+            if (!_silentMode)
+            {
+                Console.WriteLine($"\n--- Результат после обработки x{col + 1} ---");
+                PrintMatrix();
+            }
 
             pivotRow++;
         }
-
-        AnalyzeResults(variableCount);
+        
+        if (!_silentMode)
+        {
+            AnalyzeResults(variableCount);
+        }
     }
-
-    /// <summary>
-    /// Поиск строки с ведущим элементов
-    /// </summary>
-    /// <param name="col">Колонка для поиска ведущего элемента</param>
-    /// <param name="startRow">Строка, с которой начинается поиск</param>
-    /// <returns>Индекс строки с ведущим элементом</returns>
+    
     private int FindMaxRowInColumn(int col, int startRow)
     {
         var maxRow = startRow;
-        var maxVal = matrix[startRow, col].Abs;
-
-        for (var i = startRow + 1; i < rows; i++)
+        var maxVal = _matrix[startRow, col].Abs;
+        for (var i = startRow + 1; i < _rows; i++)
         {
-            if (matrix[i, col].Abs > maxVal)
-            {
-                maxVal = matrix[i, col].Abs;
-                maxRow = i;
-            }
+            if (_matrix[i, col].Abs < maxVal || _matrix[i, col].Abs == maxVal) continue;
+            maxVal = _matrix[i, col].Abs; maxRow = i;
         }
-
         return maxRow;
     }
-
-    /// <summary>
-    /// Деление строки на ведущий элемент
-    /// </summary>
-    /// <param name="row">ИНдекс строки</param>
-    /// <param name="pivot">Ведущий элемент</param>
-    private void DividePivotRow(int row, Fraction pivot)
-    {
-        for (var j = 0; j < cols; j++)
-        {
-            matrix[row, j] /= pivot;
-        }
-    }
-
-    /// <summary>
-    /// Расчет значений методом прямоугольника(учитывая то, что у ведущей строки ведущий элемент равен 1)
-    /// ik - элемент в том же столбце, что и ведущий элемент.
-    /// ij - пересчитываемый элемент.
-    /// kj - элемент в той же строке, что и ведущий элемент.
-    /// </summary>
-    /// <remarks>
-    /// New = Old - (CornerCol * CornerRow)
-    /// (знаменатель равен 1, т.к. мы заранее нормировали ведущую строку)
-    /// </remarks>
-    /// <param name="pivotCol">Номер ведущей колонки</param>
-    /// <param name="pivotRow">Номер ведущей строки</param>
+    private void DividePivotRow(int row, Fraction pivot) { for (var j = 0; j < _cols; j++) _matrix[row, j] /= pivot; }
     private void CalculateColumn(int pivotCol, int pivotRow)
     {
-        for (var i = 0; i < rows; i++)
+        for (var i = 0; i < _rows; i++)
         {
-            if (i == pivotRow)
-                continue;
-
-            var ik = matrix[i, pivotCol];
-            if (ik.IsZero)
-                continue;
-
-            for (var j = pivotCol; j < cols; j++)
+            if (i == pivotRow) continue;
+            var ik = _matrix[i, pivotCol];
+            if (ik.IsZero) continue;
+            for (var j = pivotCol; j < _cols; j++)
             {
-                var ij = matrix[i, j];
-                var kj = matrix[pivotRow, j];
-                matrix[i, j] = ij - (ik * kj);
+                _matrix[i, j] -= (ik * _matrix[pivotRow, j]);
             }
-
-            // обнуление элемента в столбце главного элемента
-            matrix[i, pivotCol] = new Fraction(0);
+            _matrix[i, pivotCol] = new Fraction(0);
         }
     }
+    private void SwapRows(int row1, int row2) { for (var j = 0; j < _cols; j++) (_matrix[row1, j], _matrix[row2, j]) = (_matrix[row2, j], _matrix[row1, j]); }
 
-    /// <summary>
-    /// Ответ в зависимости от ранга матрицы
-    /// </summary>
-    /// <param name="variableCount"></param>
     private void AnalyzeResults(int variableCount)
     {
         var hasNoSolution = false;
         var rank = 0;
         var isBasicVariable = new bool[variableCount];
-        //ранг матрицы
-        for (var i = 0; i < rows; i++)
+        
+        for (var i = 0; i < _rows; i++)
         {
             var isRowAllZeros = true;
             var pivotIndex = -1;
 
             for (var j = 0; j < variableCount; j++)
             {
-                if (matrix[i, j].IsZero) continue;
+                if (_matrix[i, j].IsZero) continue;
                 if (pivotIndex == -1) pivotIndex = j;
                 isRowAllZeros = false;
             }
@@ -144,118 +136,170 @@ public class JordanGaussSolver(Fraction[,] matrix)
             }
             else
             {
-                if (!matrix[i, cols - 1].IsZero)
-                {
-                    hasNoSolution = true;
-                }
+                if (!_matrix[i, _cols - 1].IsZero) hasNoSolution = true;
             }
         }
 
         Console.WriteLine("\n===============================================================");
         if (hasNoSolution)
         {
-            Console.WriteLine("Система не имеет решений).");
+            Console.WriteLine("Система не имеет решений.");
         }
         else if (rank < variableCount)
         {
             Console.WriteLine("Система имеет множество решений.");
-            PrintGeneralSolution(variableCount, isBasicVariable);
+            Console.WriteLine("Одно из базисных решений (текущее):");
+            ComputeAndPrintBasicSolution(variableCount, isBasicVariable);
+            
+            FindAllBasicSolutions(rank, variableCount);
         }
         else
         {
             Console.WriteLine("Система имеет единственное решение:");
             for (var i = 0; i < variableCount; i++)
             {
-                if (i < rows)
-                    Console.WriteLine($"x{i + 1} = {matrix[i, cols - 1]}");
+                 if (i < _rows) Console.WriteLine($"x{i + 1} = {_matrix[i, _cols - 1]}");
             }
         }
     }
 
-    /// <summary>
-    /// Перестановка строк местами
-    /// </summary>
-    /// <param name="row1">Строка 1</param>
-    /// <param name="row2">Строка 2</param>
-    private void SwapRows(int row1, int row2)
+    private static List<int[]> GetCombinations(int n, int k)
     {
-        for (var j = 0; j < cols; j++)
+        var result = new List<int[]>();
+        var combination = new int[k];
+        Generate(0, 0);
+        return result;
+
+        void Generate(int index, int start)
         {
-            (matrix[row1, j], matrix[row2, j]) = (matrix[row2, j], matrix[row1, j]);
+            if (index == k)
+            {
+                result.Add((int[])combination.Clone());
+                return;
+            }
+            for (var i = start; i < n; i++)
+            {
+                combination[index] = i;
+                Generate(index + 1, i + 1);
+            }
         }
     }
 
-    /// <summary>
-    /// Вывод матрицы в консоль
-    /// </summary>
-    private void PrintMatrix()
+    private void FindAllBasicSolutions(int rank, int variableCount)
     {
-        for (var i = 0; i < rows; i++)
+        Console.WriteLine($"\n--- Поиск ВСЕХ базисных решений (Ранг = {rank}) ---");
+        
+        var combinations = GetCombinations(variableCount, rank);
+        var count = 0;
+
+        foreach (var combo in combinations)
         {
-            for (var j = 0; j < cols; j++)
+            var subMatrixData = new Fraction[_rows, rank + 1];
+
+            for (var i = 0; i < _rows; i++)
             {
-                if (j == cols - 1) Console.Write("| ");
-                Console.Write($"{matrix[i, j],10}\t");
+                for (var k = 0; k < rank; k++)
+                {
+                    subMatrixData[i, k] = _originalMatrix[i, combo[k]];
+                }
+                subMatrixData[i, rank] = _originalMatrix[i, _cols - 1];
             }
 
-            Console.WriteLine();
+            var subSolver = new JordanGaussSolver(subMatrixData, silentMode: true);
+            subSolver.Solve();
+            
+            if (!subSolver.IsValidBasis(rank)) continue;
+            count++;
+            PrintSpecificBasicSolution(subSolver._matrix, combo, variableCount);
         }
+        
+        if (count == 0) Console.WriteLine("Дополнительных базисных решений не найдено.");
     }
 
-    private void PrintGeneralSolution(int variableCount, bool[] isBasicVariable)
+    private bool IsValidBasis(int expectedRank)
     {
-        for (var i = 0; i < rows; i++)
+        var actualRank = 0;
+        var subVars = _cols - 1;
+        
+        for (var i = 0; i < _rows; i++)
         {
-            var pivotCol = -1;
-            for (var j = 0; j < variableCount; j++)
+            var rowHasPivot = false;
+            for (var j = 0; j < subVars; j++)
             {
-                if (matrix[i, j].IsZero) continue;
-                pivotCol = j;
+                if (_matrix[i, j].IsZero) continue;
+                rowHasPivot = true; 
                 break;
             }
+            
+            if (rowHasPivot) actualRank++;
+            else if (!_matrix[i, _cols - 1].IsZero) return false;
+        }
 
-            if (pivotCol == -1) continue;
+        return actualRank == expectedRank;
+    }
 
-            Console.Write($"x{pivotCol + 1} = ");
+    private static void PrintSpecificBasicSolution(Fraction[,] solvedSubMatrix, int[] basisIndices, int totalVars)
+    {
+        var resultStr = new StringBuilder("X(");
+        var resultValues = new string[totalVars];
 
-            var constantTerm = matrix[i, cols - 1];
-            var termPrinted = false;
+        for (var i = 0; i < totalVars; i++) resultValues[i] = "0";
 
-            if (!constantTerm.IsZero)
+        for (var k = 0; k < basisIndices.Length; k++)
+        {
+            var originalIndex = basisIndices[k];
+            
+            var val = new Fraction(0);
+            for(var r = 0; r < solvedSubMatrix.GetLength(0); r++)
             {
-                Console.Write($"{constantTerm} ");
-                termPrinted = true;
+                if (solvedSubMatrix[r, k].IsZero) continue;
+                val = solvedSubMatrix[r, solvedSubMatrix.GetLength(1) - 1];
+                break;
             }
+            resultValues[originalIndex] = val.ToString();
+        }
 
-            for (var j = pivotCol + 1; j < variableCount; j++)
+        resultStr.Append(string.Join(", ", resultValues));
+        resultStr.Append(')');
+        
+        Console.Write($"Базис [{string.Join(" ", basisIndices.Select(x=>"x"+(x+1)))}]: ");
+        Console.WriteLine(resultStr);
+    }
+
+    private void ComputeAndPrintBasicSolution(int variableCount, bool[] isBasicVariable)
+    {
+        var res = new StringBuilder("X(");
+        for (var j = 0; j < variableCount; j++)
+        {
+            if (!isBasicVariable[j]) res.Append('0');
+            else
             {
-                var coeff = matrix[i, j];
-
-                if (coeff.IsZero) continue;
-                var movedCoeff = new Fraction(-coeff.Numerator, coeff.Denominator);
-
-                if (movedCoeff.Numerator > 0)
+                var value = _matrix[0, _cols - 1];
+                var found = false;
+                for (var i = 0; i < _rows; i++)
                 {
-                    Console.Write(termPrinted ? "+ " : "");
+                    if (_matrix[i, j].IsZero) continue;
+                    value = _matrix[i, _cols - 1];
+                    found = true;
+                    break;
                 }
-                else
-                {
-                    Console.Write("- ");
-                    movedCoeff = movedCoeff.Abs;
-                }
-
-                Console.Write(movedCoeff.Numerator == movedCoeff.Denominator
-                    ? $"x{j + 1} "
-                    : $"{movedCoeff}*x{j + 1} ");
-
-                termPrinted = true;
+                res.Append(found ? value : new Fraction(0));
             }
+            if (j < variableCount - 1) res.Append(", ");
+        }
+        res.Append(')');
+        Console.WriteLine(res.ToString());
+    }
 
-            if (!termPrinted)
+    private void PrintMatrix()
+    {
+        for (var i = 0; i < _rows; i++)
+        {
+            for (var j = 0; j < _cols; j++)
             {
-                Console.Write("0");
+                if (j == _cols - 1) Console.Write("| ");
+                Console.Write($"{_matrix[i, j],10}\t");
             }
-
             Console.WriteLine();
         }
     }
